@@ -4,8 +4,9 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import gymnasium as gym
 from gym import Env
-from gym.spaces import Discrete
+from gym.spaces import Box, Discrete
 
 from gym_env.cycle import PlayerCycle
 from gym_env.enums import Action, Stage
@@ -135,6 +136,8 @@ class HoldemTable(Env):
         self.legal_moves = None
         self.illegal_move_reward = -1
         self.action_space = Discrete(len(Action) - 2)
+        # Gym checks this attribute at env construction time.
+        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(1,), dtype=np.float64)
         self.first_action_for_hand = None
 
         self.raise_illegal_moves = raise_illegal_moves
@@ -288,7 +291,10 @@ class HoldemTable(Env):
                      'stage_data': [stage.__dict__ for stage in self.stage_data],
                      'legal_moves': self.legal_moves}
 
-        self.observation_space = self.array_everything.shape
+        self.observation_space = Box(low=-np.inf,
+                         high=np.inf,
+                         shape=self.array_everything.shape,
+                         dtype=self.array_everything.dtype)
 
         if self.render_switch:
             self.render()
@@ -686,7 +692,13 @@ class HoldemTable(Env):
         face_radius = 10
 
         if self.viewer is None:
-            self.viewer = PygletWindow(screen_width + 50, screen_height + 50)
+            try:
+                self.viewer = PygletWindow(screen_width + 50, screen_height + 50)
+            except Exception as exc:  # pragma: no cover - depends on system graphics libs
+                # Fall back to headless mode when GL/GLU/pyglet window init is unavailable.
+                log.warning(f"Rendering disabled: {exc}")
+                self.render_switch = False
+                return
         self.viewer.reset()
         self.viewer.circle(screen_width / 2, screen_height / 2, table_radius, color=BLUE,
                            thickness=0)
