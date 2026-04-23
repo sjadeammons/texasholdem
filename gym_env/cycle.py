@@ -57,7 +57,7 @@ class PlayerCycle:
     def next_player(self, step=1):
         """Switch to the next player in the round."""
         if sum(np.array(self.can_still_make_moves_in_this_hand) + np.array(self.out_of_cash_but_contributed)) < 2:
-            log.debug("Only one player remaining")
+            log.info("Only one player remaining")
             return False  # only one player remains
 
         self.idx += step

@@ -8,7 +8,7 @@ class Action(Enum):
     FOLD = 0
     CHECK = 1
     CALL = 2
-    RAISE_3BB = 3
+    RAISE_3BB = 3 # raise by 3 times the big blind
     RAISE_HALF_POT = 4
     RAISE_POT = 5
     RAISE_2POT = 6
