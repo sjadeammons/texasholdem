@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 winner_in_episodes = []
-MONTEACRLO_RUNS = 1000  # relevant for equity calculation if switched on
+MONTECARLO_RUNS = 1000  # relevant for equity calculation if switched on
 
 
 class CommunityData:
@@ -144,7 +144,7 @@ class HoldemTable(Env):
 
         # CHANGED
         self.hands_won = [0] * self.num_of_players
-        
+        self.last_adversary_action = None
 
     def reset(self):
         """Reset after game over."""
@@ -207,6 +207,7 @@ class HoldemTable(Env):
                         self._calculate_reward(action)
 
         else:  # action received from player shell (e.g. keras rl, not autoplay)
+            print(f"ACTION: {action}", flush = True)
             self._get_environment()  # get legal moves
             if Action(action) not in self.legal_moves:
                 self._illegal_move(action)
@@ -266,18 +267,20 @@ class HoldemTable(Env):
 
         self.player_data.position = self.current_player.seat
         if self.calculate_equity:
-            self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
-                                                               sum(self.player_cycle.alive), MONTEACRLO_RUNS)
+            self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), 
+                                                               set(self.table_cards),
+                                                               sum(self.player_cycle.alive), MONTECARLO_RUNS)
             self.player_data.equity_to_river_2plr = self.get_equity(set(self.current_player.cards),
                                                                     set(self.table_cards),
-                                                                    sum(self.player_cycle.alive), MONTEACRLO_RUNS)
+                                                                    sum(self.player_cycle.alive), MONTECARLO_RUNS)
             self.player_data.equity_to_river_3plr = self.get_equity(set(self.current_player.cards),
                                                                     set(self.table_cards),
-                                                                    sum(self.player_cycle.alive), MONTEACRLO_RUNS)
+                                                                    sum(self.player_cycle.alive), MONTECARLO_RUNS)
         else:
             self.current_player.equity_alive = np.nan
             self.player_data.equity_to_river_2plr = 0 #np.nan
             self.player_data.equity_to_river_3plr = 0 #np.nan
+        
         # self.current_player.equity_alive = self.get_equity(set(self.current_player.cards), set(self.table_cards),
         #                                                    sum(self.player_cycle.alive), 1000)
         # self.player_data.equity_to_river_alive = self.current_player.equity_alive
@@ -334,6 +337,37 @@ class HoldemTable(Env):
         #     self.reward = self.funds_history.iloc[-1, self.acting_agent] - self.funds_history.iloc[
         #         -2, self.acting_agent]
         #     log.info(f"Player_{self.acting_agent} REWARD AT BEGINNING OF HAND: {self.reward}")
+        # else:
+        #     pass
+
+
+        # BELOW WAS ORIGINALLY IN DECISION TREE ENV
+
+        #its_someones_first_hand = sum(self.first_action_for_hand) > 1
+
+        # if done:
+        #     # Reward winner and all losers at end of tournament
+        #     for i, player in enumerate(self.possible_agents):
+
+        #         won = 1 if (i == self.winner_ix) else -1
+        #         # give winner remaining chips
+        #         diff = ((self.initial_stacks * len(self.agents)) -  self.funds_history.iloc[-2, self.winner_ix]) * won
+        #         bonus = won * self._END_TOURNEY_BONUS
+        #         tourney_rew = diff + bonus
+        #         self.rewards[player] += tourney_rew #self.initial_stacks * len(self.agents) * won
+        #         log.info(f"{player} REWARD FOR END OF TOURNAMENT: {tourney_rew} (chip diff {diff} + bonus of {bonus})")
+
+        # # Reward all agents for differences in chips between start of this hand and last hand
+        # elif (len(self.funds_history) > 1) and its_someones_first_hand:
+
+        #     print(f"Last 2 rows of Funds History:", flush = True)
+        #     print(self.funds_history.tail(2), flush = True)
+        #     for i, player in enumerate(self.possible_agents):
+ 
+        #         hand_rew = self.funds_history.iloc[-1, i] - self.funds_history.iloc[-2, i]
+        #         self.rewards[player] += hand_rew
+        #         log.info(f"{player} REWARD FOR BEGINNING HAND: {hand_rew}")
+        #         self.first_action_for_hand[i] = False
         # else:
         #     pass
         pass
@@ -518,6 +552,7 @@ class HoldemTable(Env):
 
     def _initiate_round(self):
         """A new round (flop, turn, river) is initiated"""
+        self.last_adversary_action = None # reset in between rounds
         self.last_caller = None
         self.last_raiser = None
         self.raisers = []
